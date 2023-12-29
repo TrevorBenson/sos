@@ -22,7 +22,6 @@ class saltstack(Cluster):
     cluster_name = "Saltstack"
     packages = ("salt-master",)
     sos_plugins = ["saltmaster"]
-    cmd = "salt-run --out=pprint manage.status"
     strict_node_list = True
     option_list = [
         ("compound", "", "Filter node list to those matching compound"),
@@ -30,7 +29,7 @@ class saltstack(Cluster):
         ("grain", "", "Filter node list to those with matching grain"),
         ("list", "", "Filter node list to those matching list"),
         ("minion_id_resolvable", False, "Returns minion IDs in the node list"
-         " for transports other than saltstck. Otherwise only nodes which are"
+         " for transports other than saltstack. Otherwise only nodes which are"
          " up will have the fqdn grain returned."),
         ("nodegroup", "", "Filter node list to those matching nodegroup"),
         ("pillar", "", "Filter node list to those with matching pillar"),
@@ -39,11 +38,12 @@ class saltstack(Cluster):
     ]
     targeted = False
 
+    node_cmd = "salt-run --out=pprint manage.status"
+
     def _parse_manage_status(self, output: str) -> list:
         nodes = []
         salt_json_output = json.loads(output.replace("'", '"'))
         for _, value in salt_json_output.items():
-
             nodes.extend(value)
         return nodes
 
@@ -56,14 +56,14 @@ class saltstack(Cluster):
                 hostnames.extend(minions)
             else:
                 for minion in minions:
-                    cmd = fqdn_cmd.format(minion=minion)
+                    node_cmd = fqdn_cmd.format(minion=minion)
                     hostnames.append(
-                        self.exec_primary_cmd(cmd)["output"].strip()
+                        self.exec_primary_cmd(node_cmd)["output"].strip()
                     )
         return hostnames
 
     def _get_nodes(self) -> list:
-        res = self.exec_primary_cmd(self.cmd)
+        res = self.exec_primary_cmd(self.node_cmd)
         if res["status"] != 0:
             raise Exception("Node enumeration did not return usable output")
         if (
@@ -80,7 +80,7 @@ class saltstack(Cluster):
             if option[0] != "minion_id_resolvable":
                 opt = self.get_option(option[0])
                 if opt:
-                    self.cmd += f" tgt={quote(opt)} tgt_type={option[0]}"
+                    self.node_cmd += f" tgt={quote(opt)} tgt_type={option[0]}"
                     break
         return self._get_nodes()
 
