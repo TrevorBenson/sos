@@ -28,9 +28,8 @@ class saltstack(Cluster):
         ("glob", "", "Filter node list to those matching glob pattern"),
         ("grain", "", "Filter node list to those with matching grain"),
         ("list", "", "Filter node list to those matching list"),
-        ("minion_id_resolvable", False, "Returns minion IDs in the node list"
-         " for transports other than saltstack. Otherwise only nodes which are"
-         " up will have the fqdn grain returned."),
+        ("minion_id_unresolvable", False, "Returns the FQDN grain of each"
+         " minion in the node list when the minion ID is not a hostname."),
         ("nodegroup", "", "Filter node list to those matching nodegroup"),
         ("pillar", "", "Filter node list to those with matching pillar"),
         ("regex", "", "Filter node list to those matching regex"),
@@ -66,18 +65,15 @@ class saltstack(Cluster):
         res = self.exec_primary_cmd(self.node_cmd)
         if res["status"] != 0:
             raise Exception("Node enumeration did not return usable output")
-        if (
-                self.opts.transport == "saltstack"
-                or self.get_option("minion_id_resolvable")
-                ):
-            return self._parse_manage_status(res["output"])
-        status = json.loads(res["output"].replace("'", '"'))
-        return self._get_hostnames_from_grain(status)
+        if self.get_option("minion_id_unresolvable"):
+            status = json.loads(res["output"].replace("'", '"'))
+            return self._get_hostnames_from_grain(status)
+        return self._parse_manage_status(res["output"])
 
     def get_nodes(self):
         # Default to all online nodes
         for option in self.option_list:
-            if option[0] != "minion_id_resolvable":
+            if option[0] != "minion_id_unresolvable":
                 opt = self.get_option(option[0])
                 if opt:
                     self.node_cmd += f" tgt={quote(opt)} tgt_type={option[0]}"
